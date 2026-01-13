@@ -3,14 +3,14 @@ import numpy as np
 
 def generate_m_sequence(order: int = 10, seed: int = 1) -> np.ndarray:
     """
-    生成 m 序列（最大长度序列）
+    Generate m-sequence (Maximum Length Sequence)
 
     Parameters:
-        order: 阶数，默认 10
-        seed: 初始状态种子，默认 1
+        order: Order of the sequence, default is 10
+        seed: Initial state seed, default is 1
 
     Returns:
-        m 序列数组，长度为 2^order - 1，值为 +1/-1
+        m-sequence array, length is 2^order - 1, values are +1/-1
     """
     n = (1 << order) - 1
     state = seed & ((1 << order) - 1)
@@ -30,15 +30,15 @@ def generate_m_sequence(order: int = 10, seed: int = 1) -> np.ndarray:
 
 def bpsk_modulate(bits: np.ndarray, fc: float, fs: float) -> np.ndarray:
     """
-    BPSK 调制
+    BPSK Modulation
 
     Parameters:
-        bits: 输入符号序列 (+1/-1)
-        fc: 载波频率 (Hz)
-        fs: 采样频率 (Hz)
+        bits: Input symbol sequence (+1/-1)
+        fc: Carrier frequency (Hz)
+        fs: Sampling frequency (Hz)
 
     Returns:
-        调制后的实数信号
+        Modulated real-valued signal
     """
     n = np.arange(len(bits))
     carrier = np.cos(2 * np.pi * fc / fs * n)
@@ -47,16 +47,16 @@ def bpsk_modulate(bits: np.ndarray, fc: float, fs: float) -> np.ndarray:
 
 def tx(num_periods: int = 10, fc: float = 200e6, fs: float = 1e9, order: int = 10) -> np.ndarray:
     """
-    发射机：生成 m 序列并进行 BPSK 调制
+    Transmitter: Generate m-sequence and perform BPSK modulation
 
     Parameters:
-        num_periods: m 序列周期数
-        fc: 载波频率 (Hz)
-        fs: 采样频率 (Hz)
-        order: m 序列阶数
+        num_periods: Number of periods of the m-sequence
+        fc: Carrier frequency (Hz)
+        fs: Sampling frequency (Hz)
+        order: Order of the m-sequence
 
     Returns:
-        发射信号数组
+        Transmitted signal array
     """
     m_seq = generate_m_sequence(order)
     one_period = m_seq

@@ -3,14 +3,14 @@ import numpy as np
 
 def cross_correlation(sig1: np.ndarray, sig2: np.ndarray) -> np.ndarray:
     """
-    互相关计算（使用 FFT 加速）
+    Cross-correlation calculation (using FFT acceleration)
 
     Parameters:
-        sig1: 信号 1
-        sig2: 信号 2
+        sig1: Signal 1
+        sig2: Signal 2
 
     Returns:
-        互相关结果
+        Cross-correlation result
     """
     n = len(sig1) + len(sig2) - 1
     F1 = np.fft.fft(sig1, n)
@@ -22,28 +22,28 @@ def cross_correlation(sig1: np.ndarray, sig2: np.ndarray) -> np.ndarray:
 
 def find_peak_index(correlation: np.ndarray) -> int:
     """
-    查找互相关峰值位置
+    Find the peak position of the cross-correlation
 
     Parameters:
-        correlation: 互相关结果
+        correlation: Cross-correlation result
 
     Returns:
-        峰值索引
+        Peak index
     """
     return int(np.argmax(correlation))
 
 
 def parabolic_interpolation(y_left: float, y_peak: float, y_right: float) -> float:
     """
-    抛物线插值估计峰值偏移
+    Parabolic interpolation to estimate peak offset
 
     Parameters:
-        y_left: 峰值左侧点幅值 (索引 -1)
-        y_peak: 峰值点幅值 (索引 0)
-        y_right: 峰值右侧点幅值 (索引 +1)
+        y_left: Amplitude of the point to the left of the peak (index -1)
+        y_peak: Amplitude of the peak point (index 0)
+        y_right: Amplitude of the point to the right of the peak (index +1)
 
     Returns:
-        偏移量 δ (-0.5 ~ +0.5 采样周期)
+        Offset delta (-0.5 ~ +0.5 sampling period)
     """
     numerator = y_left - y_right
     denominator = 2 * (y_left - 2 * y_peak + y_right)
@@ -58,15 +58,15 @@ def parabolic_interpolation(y_left: float, y_peak: float, y_right: float) -> flo
 
 def rx(rx_signal: np.ndarray, tx_signal: np.ndarray, fs: float) -> float:
     """
-    接收机：估计信号延时
+    Receiver: Estimate signal delay
 
     Parameters:
-        rx_signal: 接收信号
-        tx_signal: 发射信号（参考信号）
-        fs: 采样频率 (Hz)
+        rx_signal: Received signal
+        tx_signal: Transmitted signal (reference signal)
+        fs: Sampling frequency (Hz)
 
     Returns:
-        估计延时 (秒)
+        Estimated delay (seconds)
     """
     correlation = cross_correlation(rx_signal, tx_signal)
     k_peak = find_peak_index(correlation)

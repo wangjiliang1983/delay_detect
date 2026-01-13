@@ -6,7 +6,7 @@ from rx import rx
 
 
 def run_demo():
-    """演示单次延时测量"""
+    """Demonstrate single delay measurement"""
     fs = 1e9
     fc = 200e6
     delay_true = 100.3
@@ -15,15 +15,15 @@ def run_demo():
     rx_signal = channel(tx_signal, delay_true, fs, snr_db=20)
     delay_measured = rx(rx_signal, tx_signal, fs)
 
-    error = (delay_measured - delay_true) * 1e12
+    error = (delay_measured * 1e9 - delay_true) * 1e3
 
-    print(f"延时真值: {delay_true:.3f} ns")
-    print(f"测量延时: {delay_measured * 1e9:.6f} ns")
-    print(f"测量误差: {error:.2f} ps")
+    print(f"True Delay: {delay_true:.3f} ns")
+    print(f"Measured Delay: {delay_measured * 1e9:.6f} ns")
+    print(f"Measurement Error: {error:.2f} ps")
 
 
 def run_delay_sweep():
-    """延时扫描测试"""
+    """Delay sweep test"""
     fs = 1e9
     fc = 200e6
 
@@ -48,10 +48,10 @@ def run_delay_sweep():
     max_error = np.max(np.abs(errors))
     bias = np.mean(errors)
 
-    print(f"延时扫描测试结果 (SNR=20dB)")
+    print(f"Delay Sweep Test Results (SNR=20dB)")
     print(f"  RMSE: {rmse:.2f} ps")
-    print(f"  最大误差: {max_error:.2f} ps")
-    print(f"  偏差: {bias:.2f} ps")
+    print(f"  Max Error: {max_error:.2f} ps")
+    print(f"  Bias: {bias:.2f} ps")
 
     plt.figure(figsize=(12, 6))
 
@@ -76,7 +76,7 @@ def run_delay_sweep():
 
 
 def run_noise_test():
-    """噪声鲁棒性测试"""
+    """Noise robustness test"""
     fs = 1e9
     fc = 200e6
 
@@ -106,20 +106,20 @@ def run_noise_test():
 
 if __name__ == '__main__':
     print("=" * 50)
-    print("AD/DA 链路延时测量系统仿真")
+    print("AD/DA Link Delay Measurement System Simulation")
     print("=" * 50)
     print()
 
-    print("1. 演示单次延时测量")
+    print("1. Demonstrate single delay measurement")
     print("-" * 50)
     run_demo()
     print()
 
-    print("2. 延时扫描测试")
+    print("2. Delay sweep test")
     print("-" * 50)
     run_delay_sweep()
     print()
 
-    print("3. 噪声鲁棒性测试")
+    print("3. Noise robustness test")
     print("-" * 50)
     run_noise_test()

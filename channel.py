@@ -4,15 +4,15 @@ from typing import Optional
 
 def fractional_delay(signal: np.ndarray, delay_ns: float, fs: float) -> np.ndarray:
     """
-    分数阶延时（时域实现）
+    Fractional Delay (Time Domain Implementation)
 
     Parameters:
-        signal: 输入信号
-        delay_ns: 延时 (ns)
-        fs: 采样频率 (Hz)
+        signal: Input signal
+        delay_ns: Delay (ns)
+        fs: Sampling frequency (Hz)
 
     Returns:
-        延时后的信号
+        Signal after delay
     """
     n = len(signal)
     delay_samples = delay_ns * 1e-9 * fs
@@ -39,7 +39,7 @@ def fractional_delay(signal: np.ndarray, delay_ns: float, fs: float) -> np.ndarr
 
 def add_awgn(signal: np.ndarray, snr_db: float) -> np.ndarray:
     """
-    添加高斯白噪声
+    Add Additive White Gaussian Noise (AWGN)
     """
     signal_power = np.mean(signal ** 2)
     snr_linear = 10 ** (snr_db / 10)
@@ -50,7 +50,7 @@ def add_awgn(signal: np.ndarray, snr_db: float) -> np.ndarray:
 
 def channel(tx_signal: np.ndarray, delay_ns: float, fs: float, snr_db: Optional[float] = None) -> np.ndarray:
     """
-    中间延时处理：应用分数阶延时并可选添加噪声
+    Intermediate delay processing: apply fractional delay and optionally add noise
     """
     rx_signal = fractional_delay(tx_signal, delay_ns, fs)
     if snr_db is not None:
