@@ -23,7 +23,7 @@ def run_demo():
 
 
 def run_delay_sweep():
-    """Delay sweep test"""
+    """Delay sweep test comparing multiple strategies"""
     fs = 1e9
     fc = 200e6
 
@@ -34,40 +34,57 @@ def run_delay_sweep():
     delay_step = 0.05
 
     delays_true = np.arange(delay_start, delay_stop + delay_step, delay_step)
-    delays_measured = []
+    
+    strategies = ['parabolic', 'oversampling', 'gcc_phat']
+    results = {}
 
-    for delay_ns in delays_true:
-        rx_signal = channel(tx_signal, delay_ns, fs, snr_db=20)
-        delay_est = rx(rx_signal, tx_signal, fs) * 1e9
-        delays_measured.append(delay_est)
-
-    delays_measured = np.array(delays_measured)
-    errors = (delays_measured - delays_true) * 1e3
-
-    rmse = np.sqrt(np.mean(errors ** 2))
-    max_error = np.max(np.abs(errors))
-    bias = np.mean(errors)
+    for strategy in strategies:
+        delays_measured = []
+        for delay_ns in delays_true:
+            rx_signal = channel(tx_signal, delay_ns, fs, snr_db=20)
+            delay_est = rx(rx_signal, tx_signal, fs, strategy=strategy) * 1e9
+            delays_measured.append(delay_est)
+        
+        delays_measured = np.array(delays_measured)
+        errors = (delays_measured - delays_true) * 1e3 # ps
+        
+        rmse = np.sqrt(np.mean(errors ** 2))
+        max_error = np.max(np.abs(errors))
+        bias = np.mean(errors)
+        
+        results[strategy] = {
+            'rmse': rmse,
+            'max_error': max_error,
+            'bias': bias,
+            'errors': errors
+        }
 
     print(f"Delay Sweep Test Results (SNR=20dB)")
-    print(f"  RMSE: {rmse:.2f} ps")
-    print(f"  Max Error: {max_error:.2f} ps")
-    print(f"  Bias: {bias:.2f} ps")
+    print(f"{'Strategy':<15} | {'RMSE (ps)':<10} | {'Max Error (ps)':<15} | {'Bias (ps)':<10}")
+    print("-" * 60)
+    for strategy in strategies:
+        r = results[strategy]
+        print(f"{strategy:<15} | {r['rmse']:<10.2f} | {r['max_error']:<15.2f} | {r['bias']:<10.2f}")
 
     plt.figure(figsize=(12, 6))
 
     plt.subplot(1, 2, 1)
-    plt.plot(delays_true, errors, 'b-', linewidth=1)
+    for strategy in strategies:
+        plt.plot(delays_true, results[strategy]['errors'], label=strategy, linewidth=1)
     plt.xlabel('True Delay (ns)')
     plt.ylabel('Error (ps)')
-    plt.title('Delay Measurement Error')
+    plt.title('Delay Measurement Error Comparison')
+    plt.legend()
     plt.grid(True)
     plt.axhline(y=0, color='r', linestyle='--', alpha=0.5)
 
     plt.subplot(1, 2, 2)
-    plt.hist(errors, bins=20, edgecolor='black', alpha=0.7)
+    for strategy in strategies:
+        plt.hist(results[strategy]['errors'], bins=20, alpha=0.5, label=strategy, edgecolor='black')
     plt.xlabel('Error (ps)')
     plt.ylabel('Count')
-    plt.title('Error Distribution')
+    plt.title('Error Distribution Comparison')
+    plt.legend()
     plt.grid(True)
 
     plt.tight_layout()

@@ -416,7 +416,41 @@ def parabolic_interpolation(y_left: float, y_peak: float, y_right: float) -> flo
     return delta
 ```
 
-#### 2.4.4 延时估计器
+#### 2.4.4 频域过采样 (Oversampling)
+
+**技术原理**：
+在频域进行补零操作（Zero-Padding），相当于在时域进行 sinc 插值，从而提高时域分辨率。
+
+**实现步骤**：
+1. 计算 RX 和 TX 的 FFT
+2. 计算互相关谱 `Corr_Freq = FFT(Rx) * Conj(FFT(Tx))`
+3. 在 `Corr_Freq` 中间插入 `(M-1) * N` 个零（M为过采样因子）
+4. 进行 IFFT 得到过采样后的时域互相关
+5. 寻找峰值位置 `k_peak`
+6. `Delay = k_peak / (fs * M)`
+
+**优势**：
+- 对带限信号提供理论上最优的插值精度
+- 避免了抛物线插值对峰值形状的特定假设
+- 消除偏差 (Bias)
+
+#### 2.4.5 GCC-PHAT (广义互相关-相位变换)
+
+**技术原理**：
+在频域对互相关谱的幅度进行归一化，只保留相位信息。这相当于将信号白化。
+
+**数学公式**：
+```
+R_gcc(f) = (X(f) * Y*(f)) / |X(f) * Y*(f)|
+```
+
+**特性**：
+- 产生非常尖锐的峰值（近似冲激函数）
+- 对多径效应有较好的抗性
+- 缺点：在低信噪比下会放大噪声频段的影响
+
+#### 2.4.6 延时估计器
+
 
 **完整流程**：
 
@@ -562,55 +596,39 @@ def estimate_delay(rx_signal: np.ndarray,
                 │
                 ▼
 ┌─────────────────────────────────────┐
-│ 2. 生成测试信号                     │
-│    - m 序列 + BPSK 调制             │
-│    - 长度 = 10230 采样点 (10 周期)  │
+│ 2. 策略循环                         │
+│    (Parabolic, Oversampling, GCC)   │
 └───────────────┬─────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────┐
-│ 3. 应用分数阶延时                   │
-│    - τ = τ_real + τ_noise           │
-│    - τ_noise ~ N(0, 0.01 ns)        │
-└───────────────┬─────────────────────┘
-                │
-                ▼
-┌─────────────────────────────────────┐
-│ 4. 接收端处理                       │
-│    - 互相关运算                     │
+│ 3. 接收端处理 (rx.py)               │
+│    - 根据策略选择算法               │
+│    - 互相关运算 (可过采样/白化)     │
 │    - 峰值搜索                       │
-│    - 抛物线插值                     │
+│    - 延时计算                       │
 └───────────────┬─────────────────────┘
                 │
                 ▼
 ┌─────────────────────────────────────┐
-│ 5. 记录测量结果                     │
+│ 4. 记录测量结果                     │
 │    - 测量延时                       │
 │    - 计算误差                       │
 └───────────────┬─────────────────────┘
                 │
                 ▼
-┌─────────────────────────────────────┐
-│ 6. 重复测量 100 次                  │
-│    计算均值和标准差                 │
-└───────────────┬─────────────────────┘
+         所有策略完成？
                 │
+           是   │
                 ▼
-┌─────────────────────────────────────┐
-│ 7. 步进到下一个延时点               │
-│    重复步骤 2-6                     │
-└───────────────┬─────────────────────┘
-                │
-                ▼
-         所有点测试完成？
+         所有延时点完成？
                 │
            是   │
                 ▼
          ┌─────────────────┐
-         │ 8. 生成测试报告 │
-         │    - RMSE       │
+         │ 5. 生成对比报告 │
+         │    - RMSE 对比  │
          │    - 误差曲线   │
-         │    - 统计指标   │
          └─────────────────┘
 ```
 
@@ -638,7 +656,20 @@ def estimate_delay(rx_signal: np.ndarray,
 
 验证算法在不同噪声条件下的测量精度，绘制 SNR vs. RMSE 曲线。
 
-### 4.3 线性度测试
+### 4.3 策略对比测试
+#### 4.3.1 测试配置
+- 对比策略：Parabolic, Oversampling (16x), GCC-PHAT
+- 延时扫描：100.0 ~ 105.0 ns
+- 信噪比：20 dB
+
+#### 4.3.2 测试结果 (Simulation 2026-01-13)
+| 策略 | RMSE (ps) | 最大误差 (ps) | 偏差 (ps) | 结论 |
+| :--- | :--- | :--- | :--- | :--- |
+| **Oversampling** | **26.38** | **50.00** | **0.00** | **推荐**。精度最高，无偏差。 |
+| Parabolic | 38.54 | 54.25 | -0.13 | 性能良好，略逊于过采样。 |
+| GCC-PHAT | 126.51 | 237.50 | 60.02 | 性能较差，受噪声影响大。 |
+
+### 4.4 线性度测试
 
 #### 4.3.1 测试配置
 
@@ -676,7 +707,7 @@ adda/
 │   │   ├── cross_correlation()
 │   │   ├── find_peak_index()
 │   │   ├── parabolic_interpolation()
-│   │   └── estimate_delay()
+│   │   └── rx()               # 统一接口
 │   ├── metrics.py         # 评估指标模块
 │   │   ├── calculate_rmse()
 │   │   ├── calculate_max_error()
@@ -799,13 +830,18 @@ def add_awgn(signal: np.ndarray, snr_db: float) -> np.ndarray:
 ```python
 import numpy as np
 
-def cross_correlation(sig1: np.ndarray, sig2: np.ndarray) -> np.ndarray:
+def cross_correlation(sig1: np.ndarray,
+                      sig2: np.ndarray,
+                      method: str = 'standard',
+                      upsample_factor: int = 16) -> np.ndarray:
     """
-    互相关计算（使用 FFT 加速）
+    互相关计算（支持过采样和 GCC-PHAT）
 
     Parameters:
         sig1: 信号 1
         sig2: 信号 2
+        method: 'standard' 或 'gcc_phat'
+        upsample_factor: 过采样因子 (默认 16)
 
     Returns:
         互相关结果
@@ -826,27 +862,23 @@ def parabolic_interpolation(y_left: float,
                             y_peak: float,
                             y_right: float) -> float:
     """
-    抛物线插值估计峰值偏移
-
-    Parameters:
-        y_left: 峰值左侧点幅值 (索引 -1)
-        y_peak: 峰值点幅值 (索引 0)
-        y_right: 峰值右侧点幅值 (索引 +1)
-
-    Returns:
-        偏移量 δ (-0.5 ~ +0.5 采样周期)
+    抛物线插值估计峰值偏移（用于 'parabolic' 策略）
     """
 
-def estimate_delay(rx_signal: np.ndarray,
-                   tx_signal: np.ndarray,
-                   fs: float) -> float:
+def rx(rx_signal: np.ndarray,
+       tx_signal: np.ndarray,
+       fs: float,
+       strategy: str = 'oversampling',
+       upsample_factor: int = 16) -> float:
     """
-    估计信号延时
+    接收机统一接口
 
     Parameters:
         rx_signal: 接收信号
         tx_signal: 发射信号（参考信号）
         fs: 采样频率 (Hz)
+        strategy: 'parabolic', 'oversampling', 'gcc_phat'
+        upsample_factor: 过采样因子
 
     Returns:
         估计延时 (秒)
